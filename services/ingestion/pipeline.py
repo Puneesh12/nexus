@@ -102,7 +102,30 @@ class IngestionPipeline:
 
             db.add_all(chunk_records)
 
-            # 6. Update document record
+            # 6. Extract structured memory & knowledge graph entities
+            doc_log.info("ingestion.memory_extraction")
+            from services.memory.extractor import memory_extractor
+            from services.temporal.extractor import temporal_extractor
+
+            mem_counts = await memory_extractor.extract_from_text(
+                text=parsed.text,
+                document_id=document.id,
+                user_id=document.user_id,
+                filename=document.filename,
+                db=db,
+            )
+
+            # 7. Extract temporal events & deadlines
+            doc_log.info("ingestion.temporal_extraction")
+            stored_events = await temporal_extractor.extract_and_store_events(
+                text=parsed.text,
+                document_id=document.id,
+                user_id=document.user_id,
+                filename=document.filename,
+                db=db,
+            )
+
+            # 8. Update document record
             document.status = "ready"
             document.chunk_count = len(chunk_records)
             document.metadata_ = {
@@ -110,6 +133,8 @@ class IngestionPipeline:
                 **parsed.metadata,
                 "content_hash": content_hash,
                 "ingested_at": datetime.now(timezone.utc).isoformat(),
+                "extracted_entities": mem_counts["entities"],
+                "extracted_events": len(stored_events),
             }
 
             await db.flush()
@@ -118,6 +143,8 @@ class IngestionPipeline:
             doc_log.info(
                 "ingestion.complete",
                 chunks=len(chunk_records),
+                entities=mem_counts["entities"],
+                events=len(stored_events),
                 elapsed=elapsed,
             )
 
@@ -125,8 +152,8 @@ class IngestionPipeline:
                 document_id=document.id,
                 chunks_created=len(chunk_records),
                 page_count=parsed.page_count,
-                entities_extracted=0,  # Milestone 4
-                events_extracted=0,    # Milestone 4
+                entities_extracted=mem_counts["entities"],
+                events_extracted=len(stored_events),
                 elapsed_seconds=elapsed,
             )
 
