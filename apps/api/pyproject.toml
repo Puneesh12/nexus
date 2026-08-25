@@ -2,7 +2,6 @@
 name = "nexus-api"
 version = "0.1.0"
 description = "NEXUS Personal Context Engine — FastAPI Backend"
-readme = "README.md"
 requires-python = ">=3.12"
 
 dependencies = [
@@ -76,6 +75,9 @@ ignore_missing_imports = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app", "services"]
 
 [build-system]
 requires = ["hatchling"]
