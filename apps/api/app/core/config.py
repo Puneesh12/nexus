@@ -17,9 +17,11 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # ── Application ─────────────────────────────────────────────
     APP_ENV: Literal["development", "staging", "production"] = "development"
-    APP_SECRET_KEY: str = Field(..., min_length=32)
+    APP_SECRET_KEY: str = Field(
+        default="nexus-development-insecure-secret-key-for-local-runs-32chars",
+        min_length=32,
+    )
     APP_ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
 
     # ── Database ────────────────────────────────────────────────

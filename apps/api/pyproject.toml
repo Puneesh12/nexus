@@ -17,8 +17,9 @@ dependencies = [
     "pgvector>=0.3.5",
 
     # Data validation
-    "pydantic>=2.10.0",
+    "pydantic[email]>=2.10.0",
     "pydantic-settings>=2.6.0",
+    "email-validator>=2.2.0",
 
     # Auth
     "python-jose[cryptography]>=3.3.0",
@@ -75,6 +76,7 @@ ignore_missing_imports = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+pythonpath = [".", "../.."]
 
 [tool.hatch.build.targets.wheel]
 packages = ["app", "services"]

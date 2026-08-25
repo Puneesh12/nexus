@@ -1,13 +1,13 @@
 """
 NEXUS — Document Routes
 Upload, list, and retrieve documents.
-Full ingestion pipeline is implemented in Milestone 2.
+Full ingestion pipeline wired for Milestone 2.
 """
 import uuid
 from typing import Any
 
 import structlog
-from fastapi import APIRouter, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File, status
 from sqlalchemy import select
 
 from app.core.config import settings
@@ -15,6 +15,7 @@ from app.core.deps import CurrentUser, DBSession
 from app.models.document import Document
 from app.models.source import Source
 from app.schemas.document import DocumentListResponse, DocumentResponse
+from services.ingestion.pipeline import ingestion_pipeline
 
 logger = structlog.get_logger(__name__)
 router = APIRouter()
@@ -47,8 +48,7 @@ async def upload_document(
 ) -> Document:
     """
     Upload a document for ingestion.
-    The file is validated and queued for processing.
-    Full parsing/embedding pipeline is implemented in Milestone 2.
+    Validates MIME type & size, creates records, and runs the ingestion pipeline.
     """
     # Validate file size
     file_data = await file.read()
@@ -78,7 +78,7 @@ async def upload_document(
     db.add(source)
     await db.flush()
 
-    # Create document record (pending ingestion)
+    # Create document record
     document = Document(
         user_id=current_user.id,
         source_id=source.id,
@@ -100,8 +100,12 @@ async def upload_document(
         user_id=str(current_user.id),
     )
 
-    # TODO (Milestone 2): Dispatch to ingestion pipeline
-    # await ingestion_pipeline.process(document_id=document.id, file_data=file_data)
+    # Execute ingestion pipeline
+    await ingestion_pipeline.ingest(
+        document=document,
+        file_data=file_data,
+        db=db,
+    )
 
     return document
 
