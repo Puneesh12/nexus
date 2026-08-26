@@ -1,199 +1,470 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
+  Calendar as CalendarIcon,
   Search,
-  ArrowRight,
-  FileText,
   Bell,
-  Clock,
   Sparkles,
-  ShieldCheck,
+  Play,
+  Pause,
+  Square,
+  Plus,
+  ChevronLeft,
   ChevronRight,
-  FolderOpen,
-  MessageSquare,
+  MoreVertical,
+  Check,
+  Video,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
 export default function HomePage() {
-  const router = useRouter();
-  const { ensureAuth } = useAuth();
-  const [query, setQuery] = useState("");
-  const [docCount, setDocCount] = useState<number>(0);
-  const [insightCount, setInsightCount] = useState<number>(0);
+  const { user } = useAuth();
+
+  // Time Tracker state
+  const [seconds, setSeconds] = useState(15718); // 04:21:58
+  const [timerRunning, setTimerRunning] = useState(true);
 
   useEffect(() => {
-    async function loadStats() {
-      try {
-        const token = await ensureAuth();
-        if (!token) return;
-
-        const [docRes, insRes] = await Promise.all([
-          fetch("/api/documents", { headers: { Authorization: `Bearer ${token}` } }),
-          fetch("/api/insights", { headers: { Authorization: `Bearer ${token}` } }),
-        ]);
-
-        if (docRes.ok) {
-          const docData = await docRes.json();
-          setDocCount(docData.total || (docData.documents ? docData.documents.length : 0));
-        }
-        if (insRes.ok) {
-          const insData = await insRes.json();
-          setInsightCount(insData.total || (insData.insights ? insData.insights.length : 0));
-        }
-      } catch (err) {
-        console.error(err);
-      }
+    let interval: any = null;
+    if (timerRunning) {
+      interval = setInterval(() => {
+        setSeconds((prev) => prev + 1);
+      }, 1000);
     }
-    loadStats();
-  }, []);
+    return () => clearInterval(interval);
+  }, [timerRunning]);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (query.trim()) {
-      router.push(`/conversation?q=${encodeURIComponent(query.trim())}`);
-    }
+  const formatTimer = (totalSeconds: number) => {
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    return `${hrs.toString().padStart(2, "0")}:${mins
+      .toString()
+      .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const exampleQueries = [
-    "What do I need to take care of in the next 30 days?",
-    "When does my Dell laptop warranty expire?",
-    "When is my auto insurance renewal due?",
-    "What are the details of my flight booking?",
-  ];
+  // Interactive Checklist
+  const [todos, setTodos] = useState([
+    {
+      id: 1,
+      text: "Finish the sales presentation 🔥 for the client meeting at 2:00 PM",
+      completed: false,
+    },
+    {
+      id: 2,
+      text: "Send follow-up emails to potential leads",
+      completed: true,
+    },
+    {
+      id: 3,
+      text: "Review and approve the marketing budget 📅",
+      completed: false,
+    },
+    {
+      id: 4,
+      text: "Take 10 minutes for meditation or deep breathing",
+      completed: true,
+    },
+  ]);
+
+  const toggleTodo = (id: number) => {
+    setTodos((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
+    );
+  };
+
+  // Activity filter toggle
+  const [activityMode, setActivityMode] = useState<"weekly" | "daily">("weekly");
+  const [assignedTab, setAssignedTab] = useState<"Upcoming" | "Overdue" | "Completed">("Upcoming");
 
   return (
-    <div className="min-h-full bg-[#0A0A0D] text-[#EDEDED] px-8 py-10 max-w-5xl mx-auto flex flex-col justify-between">
-      <div>
-        {/* Header Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold text-white tracking-tight">
-            Personal Context Engine
-          </h1>
-          <p className="text-sm text-[#8E8E98] mt-1">
-            Search across your documents, deadlines, and personal knowledge with grounded AI.
-          </p>
+    <div className="min-h-full chronotask-canvas text-[#1F2937] p-8 max-w-7xl mx-auto">
+      {/* ── Top Bar ── */}
+      <div className="flex items-center justify-between pb-6 mb-4">
+        {/* Date Selector */}
+        <div className="flex items-center gap-2 text-sm font-semibold text-[#4B5563] bg-white px-3.5 py-1.5 rounded-xl border border-[#E5E7EB] shadow-2xs cursor-pointer hover:bg-[#F9FAFB]">
+          <CalendarIcon className="w-4 h-4 text-[#6B7280]" />
+          <span>Monday, September 30</span>
+          <span className="text-xs text-[#9CA3AF]">⇕</span>
         </div>
 
-        {/* Central Search Bar */}
-        <form onSubmit={handleSearch} className="mb-8">
-          <div className="relative flex items-center rounded-xl bg-[#14141A] border border-[#22222B] hover:border-[#383846] focus-within:border-white focus-within:ring-1 focus-within:ring-white transition-all p-2 shadow-lg">
-            <Search className="w-5 h-5 text-[#70707C] ml-3 shrink-0" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Ask anything about your files, warranties, tickets, or deadlines..."
-              className="w-full bg-transparent px-3 py-2 text-sm text-white placeholder:text-[#5E5E6B] focus:outline-none"
-            />
-            <button
-              type="submit"
-              disabled={!query.trim()}
-              className="px-4 py-2 rounded-lg bg-white text-black text-xs font-semibold hover:bg-[#E5E5E5] disabled:opacity-30 transition-all flex items-center gap-1.5 shrink-0"
-            >
-              Search
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Quick suggestions */}
-          <div className="flex flex-wrap items-center gap-2 mt-3">
-            <span className="text-xs text-[#5E5E6B]">Try asking:</span>
-            {exampleQueries.map((q, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => router.push(`/conversation?q=${encodeURIComponent(q)}`)}
-                className="text-xs px-3 py-1 rounded-md bg-[#14141A] border border-[#22222B] text-[#A0A0AB] hover:text-white hover:border-[#444452] transition-colors"
-              >
-                "{q}"
-              </button>
-            ))}
-          </div>
-        </form>
-
-        {/* Stats & Quick Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-          <Link
-            href="/knowledge"
-            className="p-5 rounded-xl bg-[#121217] border border-[#1E1E26] hover:border-[#333340] transition-all group flex flex-col justify-between"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-9 h-9 rounded-lg bg-[#1F1F28] flex items-center justify-center text-white">
-                <FolderOpen className="w-4 h-4" />
-              </div>
-              <span className="text-2xl font-bold text-white font-mono">
-                {docCount || 5}
-              </span>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-white group-hover:text-white flex items-center gap-1.5">
-                Connected Documents
-                <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </h3>
-              <p className="text-xs text-[#7A7A85] mt-1">
-                PDFs, DOCX, and text notes indexed with 1536-dim vector embeddings.
-              </p>
-            </div>
-          </Link>
-
-          <Link
-            href="/insights"
-            className="p-5 rounded-xl bg-[#121217] border border-[#1E1E26] hover:border-[#333340] transition-all group flex flex-col justify-between"
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-9 h-9 rounded-lg bg-[#1F1F28] flex items-center justify-center text-white">
-                <Bell className="w-4 h-4" />
-              </div>
-              <span className="text-2xl font-bold text-white font-mono">
-                {insightCount || 4}
-              </span>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-white group-hover:text-white flex items-center gap-1.5">
-                Active Insights &amp; Deadlines
-                <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </h3>
-              <p className="text-xs text-[#7A7A85] mt-1">
-                Upcoming warranties, insurance renewals, and flight schedules.
-              </p>
-            </div>
-          </Link>
-
+        {/* Action icons & Customize */}
+        <div className="flex items-center gap-3">
           <Link
             href="/conversation"
-            className="p-5 rounded-xl bg-[#121217] border border-[#1E1E26] hover:border-[#333340] transition-all group flex flex-col justify-between"
+            className="p-2 rounded-xl bg-white border border-[#E5E7EB] text-[#6B7280] hover:text-[#111827] hover:bg-[#F9FAFB] transition-colors shadow-2xs"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-9 h-9 rounded-lg bg-[#1F1F28] flex items-center justify-center text-white">
-                <MessageSquare className="w-4 h-4" />
-              </div>
-              <span className="text-xs px-2 py-0.5 rounded bg-[#10B981]/15 text-[#10B981] font-semibold">
-                Grounded
-              </span>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-white group-hover:text-white flex items-center gap-1.5">
-                Interactive Chat
-                <ChevronRight className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </h3>
-              <p className="text-xs text-[#7A7A85] mt-1">
-                Conversational RAG backed by exact citations from your files.
-              </p>
-            </div>
+            <Search className="w-4 h-4" />
           </Link>
+          <Link
+            href="/insights"
+            className="relative p-2 rounded-xl bg-white border border-[#E5E7EB] text-[#6B7280] hover:text-[#111827] hover:bg-[#F9FAFB] transition-colors shadow-2xs"
+          >
+            <Bell className="w-4 h-4" />
+            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#EF4444]"></span>
+          </Link>
+          <img
+            src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&h=80&auto=format&fit=crop&crop=face"
+            alt="Amanda P."
+            className="w-8 h-8 rounded-full object-cover border border-[#E5E7EB]"
+          />
+          <button className="flex items-center gap-1.5 text-xs font-semibold text-[#374151] bg-white border border-[#E5E7EB] px-3.5 py-2 rounded-xl hover:bg-[#F9FAFB] shadow-2xs">
+            <span>Customize</span>
+            <Sparkles className="w-3.5 h-3.5 text-[#8B5CF6]" />
+          </button>
         </div>
       </div>
 
-      {/* Footer Info */}
-      <div className="pt-6 border-t border-[#1C1C22] flex items-center justify-between text-xs text-[#5E5E6B]">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-[#10B981]" />
-          <span>Local Privacy First · PostgreSQL + pgvector Storage</span>
+      {/* ── Greeting ── */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-[#111827] tracking-tight">
+          Good morning, {user?.name ? user.name.split(" ")[0] : "Amanda"}
+        </h1>
+      </div>
+
+      {/* ── Dashboard Grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* ── Card 1: To Do List (Left Column, span 6) ── */}
+        <div className="lg:col-span-6 card-chronotask p-6 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#F3F4F6]">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📝</span>
+                <h2 className="text-xl font-bold text-[#111827]">To do list</h2>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                const text = prompt("Enter new task:");
+                if (text) {
+                  setTodos((prev) => [
+                    ...prev,
+                    { id: Date.now(), text, completed: false },
+                  ]);
+                }
+              }}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#6B7280] hover:text-[#111827] mb-4 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Create new</span>
+            </button>
+
+            <div className="space-y-4">
+              {todos.map((todo) => (
+                <div
+                  key={todo.id}
+                  onClick={() => toggleTodo(todo.id)}
+                  className="flex items-start gap-3 cursor-pointer group select-none"
+                >
+                  <div
+                    className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors shrink-0 mt-0.5 border ${
+                      todo.completed
+                        ? "bg-[#2563EB] border-[#2563EB] text-white"
+                        : "border-[#D1D5DB] bg-white group-hover:border-[#9CA3AF]"
+                    }`}
+                  >
+                    {todo.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                  </div>
+                  <span
+                    className={`text-sm leading-relaxed transition-all ${
+                      todo.completed
+                        ? "line-through text-[#9CA3AF]"
+                        : "text-[#374151] group-hover:text-[#111827]"
+                    }`}
+                  >
+                    {todo.text}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Bottom Reminder Pill */}
+          <div className="mt-8 pt-4 border-t border-[#F3F4F6]">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-[#111827]">Reminder</span>
+              <div className="flex items-center gap-1 text-[#9CA3AF]">
+                <button className="p-1 rounded hover:bg-[#F3F4F6]">
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <button className="p-1 rounded hover:bg-[#F3F4F6]">
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+            <div className="p-3.5 rounded-xl bg-[#F9FAFB] border border-[#F1F3F5] flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-[#111827]">Today's Meeting</p>
+                <p className="text-[11px] text-[#6B7280]">Call with marketing team · 13:00 - 13:45</p>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-[#EBF5FF] flex items-center justify-center text-[#2563EB]">
+                <Video className="w-4 h-4" />
+              </div>
+            </div>
+          </div>
         </div>
-        <span>NEXUS Core 0.1.0</span>
+
+        {/* ── Right Column: Time Tracker + Activity Rings + Assigned Tasks (span 6) ── */}
+        <div className="lg:col-span-6 space-y-6">
+          {/* Top Half: Time tracker + Activity Rings in 2 columns */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {/* Time Tracker */}
+            <div className="card-chronotask p-6 flex flex-col justify-between items-center text-center">
+              <div className="w-full flex items-center justify-between text-xs text-[#6B7280] font-semibold mb-2">
+                <span>Time tracker</span>
+                <MoreVertical className="w-4 h-4 text-[#9CA3AF] cursor-pointer" />
+              </div>
+
+              <div className="my-6">
+                <div className="text-3xl font-extrabold text-[#111827] tracking-tight font-mono">
+                  {formatTimer(seconds)}
+                </div>
+              </div>
+
+              {/* Pause and Stop Controls */}
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setTimerRunning(!timerRunning)}
+                  className="w-10 h-10 rounded-full border border-[#E5E7EB] bg-white flex items-center justify-center text-[#374151] hover:bg-[#F3F4F6] transition-colors shadow-2xs"
+                >
+                  {timerRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+                </button>
+                <button
+                  onClick={() => {
+                    setTimerRunning(false);
+                    setSeconds(0);
+                  }}
+                  className="w-10 h-10 rounded-full bg-[#EA580C] text-white flex items-center justify-center hover:bg-[#C2410C] transition-colors shadow-sm"
+                >
+                  <Square className="w-4 h-4 fill-current" />
+                </button>
+              </div>
+            </div>
+
+            {/* Activity Rings */}
+            <div className="card-chronotask p-6 flex flex-col justify-between">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-[#111827]">Activity</span>
+                <div className="flex items-center gap-2 text-[11px]">
+                  <button
+                    onClick={() => setActivityMode("weekly")}
+                    className={`font-semibold ${
+                      activityMode === "weekly" ? "text-[#2563EB]" : "text-[#9CA3AF]"
+                    }`}
+                  >
+                    weekly
+                  </button>
+                  <button
+                    onClick={() => setActivityMode("daily")}
+                    className={`font-semibold ${
+                      activityMode === "daily" ? "text-[#2563EB]" : "text-[#9CA3AF]"
+                    }`}
+                  >
+                    daily
+                  </button>
+                </div>
+              </div>
+
+              {/* Rings + Stats Layout */}
+              <div className="flex items-center justify-between gap-2 my-2">
+                {/* Text Stats */}
+                <div className="space-y-2 text-xs">
+                  <div>
+                    <div className="flex items-center gap-1.5 text-[#F59E0B]">
+                      <span className="w-1 h-3 rounded-full bg-[#F59E0B] inline-block"></span>
+                      <span className="text-[10px] text-[#6B7280]">Working hours</span>
+                    </div>
+                    <p className="text-base font-bold text-[#111827] ml-2.5">29/40</p>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5 text-[#06B6D4]">
+                      <span className="w-1 h-3 rounded-full bg-[#06B6D4] inline-block"></span>
+                      <span className="text-[10px] text-[#6B7280]">Tasks completed</span>
+                    </div>
+                    <p className="text-base font-bold text-[#111827] ml-2.5">8/12</p>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5 text-[#2563EB]">
+                      <span className="w-1 h-3 rounded-full bg-[#2563EB] inline-block"></span>
+                      <span className="text-[10px] text-[#6B7280]">Projects completed</span>
+                    </div>
+                    <p className="text-base font-bold text-[#111827] ml-2.5">4/7</p>
+                  </div>
+                </div>
+
+                {/* SVG Radial Multi-Rings */}
+                <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
+                  <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
+                    {/* Outer Ring (Orange) */}
+                    <circle cx="50" cy="50" r="42" stroke="#FEF3C7" strokeWidth="6" fill="none" />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="42"
+                      stroke="#F59E0B"
+                      strokeWidth="6"
+                      strokeDasharray="264"
+                      strokeDashoffset="70"
+                      strokeLinecap="round"
+                      fill="none"
+                    />
+
+                    {/* Middle Ring (Cyan) */}
+                    <circle cx="50" cy="50" r="32" stroke="#CFFAFE" strokeWidth="6" fill="none" />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="32"
+                      stroke="#06B6D4"
+                      strokeWidth="6"
+                      strokeDasharray="201"
+                      strokeDashoffset="60"
+                      strokeLinecap="round"
+                      fill="none"
+                    />
+
+                    {/* Inner Ring (Blue) */}
+                    <circle cx="50" cy="50" r="22" stroke="#DBEAFE" strokeWidth="6" fill="none" />
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="22"
+                      stroke="#2563EB"
+                      strokeWidth="6"
+                      strokeDasharray="138"
+                      strokeDashoffset="55"
+                      strokeLinecap="round"
+                      fill="none"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Dots navigation */}
+              <div className="flex justify-center gap-1 mt-2">
+                <span className="w-4 h-1 rounded-full bg-[#111827]"></span>
+                <span className="w-1.5 h-1 rounded-full bg-[#E5E7EB]"></span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Tasks I've assigned ── */}
+          <div className="card-chronotask p-6">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-[#F3F4F6]">
+              <h2 className="text-sm font-bold text-[#111827]">Tasks I've assigned</h2>
+              <button className="p-1 rounded-md hover:bg-[#F3F4F6] text-[#6B7280]">
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex items-center gap-4 text-xs font-semibold pb-3 mb-4 border-b border-[#F3F4F6]">
+              {(["Upcoming", "Overdue", "Completed"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setAssignedTab(tab)}
+                  className={`pb-1 transition-colors relative ${
+                    assignedTab === tab ? "text-[#2563EB]" : "text-[#9CA3AF] hover:text-[#4B5563]"
+                  }`}
+                >
+                  {tab}
+                  {assignedTab === tab && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2563EB] rounded-full"></span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Tasks List */}
+            <div className="space-y-3.5">
+              {/* Row 1 */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-5 h-5 rounded bg-[#EF4444] text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+                    8
+                  </span>
+                  <span className="text-xs font-semibold text-[#1F2937] truncate">
+                    New Ideas for campaign
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="w-24 bg-[#E5E7EB] rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-[#06B6D4] h-full rounded-full w-[60%]"></div>
+                  </div>
+                  <span className="text-xs font-semibold text-[#6B7280] w-8 text-right">60%</span>
+                  <div className="flex -space-x-1.5">
+                    <img
+                      src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=60&h=60&auto=format&fit=crop&crop=face"
+                      className="w-5 h-5 rounded-full border border-white"
+                      alt=""
+                    />
+                    <img
+                      src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=60&h=60&auto=format&fit=crop&crop=face"
+                      className="w-5 h-5 rounded-full border border-white"
+                      alt=""
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 2 */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-5 h-5 rounded bg-[#F59E0B] text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+                    7
+                  </span>
+                  <span className="text-xs font-semibold text-[#1F2937] truncate">
+                    Change button
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="w-24 bg-[#E5E7EB] rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-[#06B6D4] h-full rounded-full w-[27%]"></div>
+                  </div>
+                  <span className="text-xs font-semibold text-[#6B7280] w-8 text-right">27%</span>
+                  <img
+                    src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=60&h=60&auto=format&fit=crop&crop=face"
+                    className="w-5 h-5 rounded-full border border-white"
+                    alt=""
+                  />
+                </div>
+              </div>
+
+              {/* Row 3 */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="w-5 h-5 rounded bg-[#EAB308] text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+                    6
+                  </span>
+                  <span className="text-xs font-semibold text-[#1F2937] truncate">
+                    New BrandBook
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="w-24 bg-[#E5E7EB] rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-[#06B6D4] h-full rounded-full w-[95%]"></div>
+                  </div>
+                  <span className="text-xs font-semibold text-[#6B7280] w-8 text-right">95%</span>
+                  <div className="flex -space-x-1.5">
+                    <img
+                      src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=60&h=60&auto=format&fit=crop&crop=face"
+                      className="w-5 h-5 rounded-full border border-white"
+                      alt=""
+                    />
+                    <img
+                      src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=60&h=60&auto=format&fit=crop&crop=face"
+                      className="w-5 h-5 rounded-full border border-white"
+                      alt=""
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

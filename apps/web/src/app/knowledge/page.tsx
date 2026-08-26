@@ -8,9 +8,11 @@ import {
   CheckCircle,
   AlertCircle,
   RefreshCw,
-  Trash2,
-  Calendar,
+  Plus,
+  Folder,
+  File,
   Layers,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
@@ -39,7 +41,6 @@ export default function KnowledgePage() {
   const [dragging, setDragging] = useState(false);
   const [loadingDocs, setLoadingDocs] = useState(true);
 
-  // Load existing documents from backend
   const loadDocuments = async () => {
     setLoadingDocs(true);
     try {
@@ -120,13 +121,12 @@ export default function KnowledgePage() {
                 : f
             )
           );
-          // Refresh list
           loadDocuments();
         } else {
           setFiles((prev) =>
             prev.map((f) =>
               f.name === file.name
-                ? { ...f, status: "error", message: data.detail || "Upload rejected" }
+                ? { ...f, status: "error", message: data.detail || "Upload failed" }
                 : f
             )
           );
@@ -150,46 +150,34 @@ export default function KnowledgePage() {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const formatDate = (dateStr: string) => {
-    try {
-      return new Date(dateStr).toLocaleDateString([], {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-    } catch {
-      return "Recent";
-    }
-  };
-
   return (
-    <div className="min-h-full bg-[#0A0A0D] text-[#EDEDED] px-8 py-10 max-w-5xl mx-auto">
+    <div className="min-h-full chronotask-canvas text-[#1F2937] p-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 mb-8 border-b border-[#1C1C22] gap-4">
+      <div className="flex items-center justify-between pb-6 mb-6 border-b border-[#E5E7EB]">
         <div>
-          <h1 className="text-2xl font-semibold text-white tracking-tight">
-            Knowledge Base
+          <h1 className="text-2xl font-bold text-[#111827] tracking-tight">
+            Knowledge &amp; Portfolios
           </h1>
-          <p className="text-sm text-[#8E8E98] mt-0.5">
-            Manage your connected files, documents, policies, and notes.
+          <p className="text-xs text-[#6B7280] mt-0.5">
+            Connect documents, notes, policies, and personal context.
           </p>
         </div>
 
         <button
           onClick={loadDocuments}
-          className="text-xs text-[#A0A0AB] hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#14141A] border border-[#22222B] hover:border-[#383846] transition-colors self-start sm:self-auto"
+          className="flex items-center gap-1.5 text-xs font-semibold text-[#374151] bg-white border border-[#E5E7EB] px-3.5 py-2 rounded-xl hover:bg-[#F9FAFB] shadow-2xs transition-colors"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loadingDocs ? "animate-spin" : ""}`} />
-          <span>Refresh</span>
+          <span>Refresh Files</span>
         </button>
       </div>
 
-      {/* Dropzone */}
+      {/* ── Dropzone & Upload Card ── */}
       <div
-        className={`border-2 border-dashed rounded-xl p-10 text-center transition-all cursor-pointer mb-8 ${
+        className={`card-chronotask p-8 text-center transition-all cursor-pointer mb-8 ${
           dragging
-            ? "border-white bg-[#14141C]"
-            : "border-[#242430] hover:border-[#404052] bg-[#101015]"
+            ? "border-[#2563EB] bg-[#EFF6FF]"
+            : "border-[#E5E7EB] bg-white hover:border-[#93C5FD]"
         }`}
         onDragOver={(e) => {
           e.preventDefault();
@@ -203,17 +191,18 @@ export default function KnowledgePage() {
         }}
         onClick={() => document.getElementById("file-input")?.click()}
       >
-        <div className="w-10 h-10 rounded-full bg-[#181822] flex items-center justify-center text-white mx-auto mb-3">
-          <Upload className="w-5 h-5" />
+        <div className="w-12 h-12 rounded-2xl bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center mx-auto mb-3 shadow-xs">
+          <Upload className="w-6 h-6" />
         </div>
-        <p className="text-sm font-medium text-white mb-1">
-          Click to upload or drag and drop
+        <h3 className="text-base font-bold text-[#111827] mb-1">
+          Upload documents to build your personal knowledge
+        </h3>
+        <p className="text-xs text-[#6B7280] mb-4">
+          Drag &amp; drop PDF, DOCX, TXT, or Markdown files here · Max 50MB
         </p>
-        <p className="text-xs text-[#70707C] mb-4">
-          PDF, DOCX, TXT, Markdown · Max 50MB
-        </p>
-        <span className="inline-block text-xs font-medium px-3 py-1.5 rounded-lg bg-white text-black hover:bg-[#E5E5E5] transition-colors shadow-sm">
-          Select files
+        <span className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl bg-[#2563EB] text-white hover:bg-[#1D4ED8] transition-colors shadow-sm">
+          <Plus className="w-3.5 h-3.5" />
+          Choose Local Files
         </span>
         <input
           id="file-input"
@@ -228,31 +217,33 @@ export default function KnowledgePage() {
       {/* Active Uploads */}
       {files.length > 0 && (
         <div className="mb-8">
-          <h3 className="text-xs font-semibold text-[#8E8E98] uppercase tracking-wider mb-3">
+          <h3 className="text-xs font-bold text-[#4B5563] uppercase tracking-wider mb-3">
             Recent Uploads
           </h3>
           <div className="space-y-2">
             {files.map((file, i) => (
               <div
                 key={i}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg border border-[#22222B] bg-[#121217] text-xs"
+                className="card-chronotask px-4 py-3 flex items-center gap-3 text-xs"
               >
-                <FileText className="w-4 h-4 text-white shrink-0" />
-                <span className="flex-1 font-medium text-white truncate">{file.name}</span>
+                <FileText className="w-4 h-4 text-[#2563EB] shrink-0" />
+                <span className="flex-1 font-semibold text-[#111827] truncate">
+                  {file.name}
+                </span>
                 {file.status === "uploading" && (
-                  <div className="flex items-center gap-1.5 text-[#8E8E98]">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    <span>Processing...</span>
+                  <div className="flex items-center gap-1.5 text-[#6B7280]">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#2563EB]" />
+                    <span>Processing &amp; Chunking...</span>
                   </div>
                 )}
                 {file.status === "success" && (
-                  <div className="flex items-center gap-1.5 text-[#10B981] font-medium">
+                  <div className="flex items-center gap-1.5 text-[#059669] font-semibold">
                     <CheckCircle className="w-4 h-4" />
                     <span>{file.message}</span>
                   </div>
                 )}
                 {file.status === "error" && (
-                  <div className="flex items-center gap-1.5 text-red-400">
+                  <div className="flex items-center gap-1.5 text-[#DC2626]">
                     <AlertCircle className="w-4 h-4" />
                     <span>{file.message}</span>
                   </div>
@@ -263,59 +254,65 @@ export default function KnowledgePage() {
         </div>
       )}
 
-      {/* Documents Table */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-semibold text-[#8E8E98] uppercase tracking-wider">
-            Connected Documents ({existingDocs.length})
-          </h3>
+      {/* Document Library Table */}
+      <div className="card-chronotask overflow-hidden">
+        <div className="p-5 border-b border-[#F3F4F6] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Folder className="w-4 h-4 text-[#2563EB]" />
+            <h2 className="text-sm font-bold text-[#111827]">
+              Indexed Documents ({existingDocs.length})
+            </h2>
+          </div>
+          <span className="text-xs text-[#6B7280]">Vector Database</span>
         </div>
 
         {loadingDocs ? (
-          <div className="py-12 text-center text-xs text-[#70707C] flex flex-col items-center gap-2">
-            <Loader2 className="w-5 h-5 animate-spin text-white" />
-            <span>Loading documents...</span>
+          <div className="py-16 text-center text-xs text-[#6B7280] flex flex-col items-center gap-2">
+            <Loader2 className="w-6 h-6 animate-spin text-[#2563EB]" />
+            <span>Loading contextual documents...</span>
           </div>
         ) : existingDocs.length === 0 ? (
-          <div className="p-8 rounded-xl border border-[#1E1E26] bg-[#121217] text-center text-xs text-[#70707C]">
-            No documents uploaded yet. Drag and drop your files above.
+          <div className="p-12 text-center text-xs text-[#6B7280]">
+            No documents uploaded yet. Upload files above to populate your personal context.
           </div>
         ) : (
-          <div className="rounded-xl border border-[#1E1E26] bg-[#121217] overflow-hidden">
+          <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-[#1E1E26] bg-[#0E0E13] text-[#70707C] font-medium">
+              <thead className="bg-[#F9FAFB] text-[#6B7280] font-semibold border-b border-[#F3F4F6]">
                 <tr>
-                  <th className="py-3 px-4">Document</th>
-                  <th className="py-3 px-4 hidden sm:table-cell">Size</th>
-                  <th className="py-3 px-4 hidden md:table-cell">Chunks</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 hidden sm:table-cell">Added</th>
+                  <th className="py-3 px-5">Document Name</th>
+                  <th className="py-3 px-5">Format</th>
+                  <th className="py-3 px-5">Size</th>
+                  <th className="py-3 px-5">Chunks</th>
+                  <th className="py-3 px-5">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#1E1E26]">
+              <tbody className="divide-y divide-[#F3F4F6]">
                 {existingDocs.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-[#16161D] transition-colors">
-                    <td className="py-3.5 px-4">
+                  <tr key={doc.id} className="hover:bg-[#F9FAFB] transition-colors">
+                    <td className="py-3.5 px-5">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <FileText className="w-4 h-4 text-[#A0A0AB] shrink-0" />
-                        <span className="font-medium text-white truncate max-w-xs sm:max-w-md">
+                        <FileText className="w-4 h-4 text-[#4B5563] shrink-0" />
+                        <span className="font-semibold text-[#111827] truncate max-w-sm">
                           {doc.filename}
                         </span>
                       </div>
                     </td>
-                    <td className="py-3.5 px-4 text-[#8E8E98] hidden sm:table-cell">
-                      {formatFileSize(doc.file_size_bytes)}
-                    </td>
-                    <td className="py-3.5 px-4 text-[#8E8E98] hidden md:table-cell">
-                      {doc.chunk_count || 1}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#10B981]/15 text-[#10B981]">
-                        Indexed
+                    <td className="py-3.5 px-5 text-[#6B7280]">
+                      <span className="px-2 py-0.5 rounded-md bg-[#F3F4F6] text-[#4B5563] font-medium">
+                        {doc.filename.split(".").pop()?.toUpperCase() || "TXT"}
                       </span>
                     </td>
-                    <td className="py-3.5 px-4 text-[#70707C] hidden sm:table-cell">
-                      {formatDate(doc.created_at)}
+                    <td className="py-3.5 px-5 text-[#6B7280]">
+                      {formatFileSize(doc.file_size_bytes)}
+                    </td>
+                    <td className="py-3.5 px-5 font-semibold text-[#111827]">
+                      {doc.chunk_count || 1}
+                    </td>
+                    <td className="py-3.5 px-5">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#ECFDF5] text-[#059669]">
+                        ● Ready
+                      </span>
                     </td>
                   </tr>
                 ))}
