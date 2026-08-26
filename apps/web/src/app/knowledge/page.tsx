@@ -8,9 +8,9 @@ import {
   CheckCircle,
   AlertCircle,
   RefreshCw,
+  Trash2,
+  Calendar,
   Layers,
-  Database,
-  Check,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
@@ -20,7 +20,6 @@ interface UploadedFile {
   name: string;
   status: UploadStatus;
   message?: string;
-  chunkCount?: number;
 }
 
 interface ServerDocument {
@@ -121,7 +120,7 @@ export default function KnowledgePage() {
                 : f
             )
           );
-          // Refresh connected docs list
+          // Refresh list
           loadDocuments();
         } else {
           setFiles((prev) =>
@@ -144,39 +143,53 @@ export default function KnowledgePage() {
     }
   };
 
+  const formatFileSize = (bytes: number) => {
+    if (!bytes) return "—";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleDateString([], {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    } catch {
+      return "Recent";
+    }
+  };
+
   return (
-    <div className="min-h-full bg-[#0C0C10] text-[#F8F3E6] font-sans px-6 sm:px-12 py-10 max-w-5xl mx-auto">
-      {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 mb-8 border-b border-[#22222E] gap-4">
+    <div className="min-h-full bg-[#0A0A0D] text-[#EDEDED] px-8 py-10 max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 mb-8 border-b border-[#1C1C22] gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono font-bold tracking-widest text-[#FF6B55] uppercase">
-              // KNOWLEDGE REPOSITORY
-            </span>
-          </div>
-          <h1 className="text-3xl font-extrabold font-display tracking-tight text-[#F8F3E6]">
-            DOCUMENT INTELLIGENCE
+          <h1 className="text-2xl font-semibold text-white tracking-tight">
+            Knowledge Base
           </h1>
-          <p className="text-xs text-[#8E8E9B] mt-1 font-mono">
-            AUTOMATIC INGESTION · RECURSIVE CHUNKING · 1536-DIM VECTOR EMBEDDING
+          <p className="text-sm text-[#8E8E98] mt-0.5">
+            Manage your connected files, documents, policies, and notes.
           </p>
         </div>
 
         <button
           onClick={loadDocuments}
-          className="text-xs font-mono text-[#D0D0E0] hover:text-white flex items-center gap-2 px-3.5 py-2 rounded bg-[#14141E] border border-[#2E2E40] hover:border-[#FF6B55] transition-all self-start sm:self-auto"
+          className="text-xs text-[#A0A0AB] hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#14141A] border border-[#22222B] hover:border-[#383846] transition-colors self-start sm:self-auto"
         >
-          <RefreshCw className={`w-3.5 h-3.5 text-[#FF6B55] ${loadingDocs ? "animate-spin" : ""}`} />
-          <span>Sync Context</span>
+          <RefreshCw className={`w-3.5 h-3.5 ${loadingDocs ? "animate-spin" : ""}`} />
+          <span>Refresh</span>
         </button>
       </div>
 
-      {/* ── Pixelate Drop Zone ── */}
+      {/* Dropzone */}
       <div
-        className={`relative border-2 border-dashed rounded-lg p-10 text-center transition-all cursor-pointer pixel-grid-dense ${
+        className={`border-2 border-dashed rounded-xl p-10 text-center transition-all cursor-pointer mb-8 ${
           dragging
-            ? "border-[#FF6B55] bg-[#1A151C]"
-            : "border-[#333344] hover:border-[#FF6B55] bg-[#12121A]/60"
+            ? "border-white bg-[#14141C]"
+            : "border-[#242430] hover:border-[#404052] bg-[#101015]"
         }`}
         onDragOver={(e) => {
           e.preventDefault();
@@ -190,17 +203,17 @@ export default function KnowledgePage() {
         }}
         onClick={() => document.getElementById("file-input")?.click()}
       >
-        <div className="w-12 h-12 rounded-lg bg-[#FF6B55]/10 border border-[#FF6B55]/30 flex items-center justify-center text-[#FF6B55] mx-auto mb-4">
-          <Upload className="w-6 h-6" />
+        <div className="w-10 h-10 rounded-full bg-[#181822] flex items-center justify-center text-white mx-auto mb-3">
+          <Upload className="w-5 h-5" />
         </div>
-        <h3 className="text-lg font-bold font-display text-[#F8F3E6] mb-1">
-          Drop Files Here or Click to Upload
-        </h3>
-        <p className="text-xs font-mono text-[#8E8E9B] max-w-sm mx-auto mb-4">
-          PDF, DOCX, TXT, Markdown · Max 50MB per file
+        <p className="text-sm font-medium text-white mb-1">
+          Click to upload or drag and drop
         </p>
-        <span className="inline-block text-[11px] font-mono font-bold px-3 py-1 rounded bg-[#FF6B55] text-[#0C0C10] tracking-wider uppercase shadow-[2px_2px_0px_#FFFFFF]">
-          Select Local Files
+        <p className="text-xs text-[#70707C] mb-4">
+          PDF, DOCX, TXT, Markdown · Max 50MB
+        </p>
+        <span className="inline-block text-xs font-medium px-3 py-1.5 rounded-lg bg-white text-black hover:bg-[#E5E5E5] transition-colors shadow-sm">
+          Select files
         </span>
         <input
           id="file-input"
@@ -212,34 +225,34 @@ export default function KnowledgePage() {
         />
       </div>
 
-      {/* ── Active / Recent Uploads ── */}
+      {/* Active Uploads */}
       {files.length > 0 && (
-        <div className="mt-8">
-          <p className="text-xs font-mono font-bold tracking-widest text-[#FF6B55] uppercase mb-3">
-            // ACTIVE UPLOADS IN PIPELINE
-          </p>
+        <div className="mb-8">
+          <h3 className="text-xs font-semibold text-[#8E8E98] uppercase tracking-wider mb-3">
+            Recent Uploads
+          </h3>
           <div className="space-y-2">
             {files.map((file, i) => (
               <div
                 key={i}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg border border-[#2A2A38] bg-[#14141E]"
+                className="flex items-center gap-3 px-4 py-3 rounded-lg border border-[#22222B] bg-[#121217] text-xs"
               >
-                <FileText className="w-4 h-4 text-[#FF6B55] shrink-0" />
-                <span className="flex-1 text-xs font-mono text-[#F8F3E6] truncate">{file.name}</span>
+                <FileText className="w-4 h-4 text-white shrink-0" />
+                <span className="flex-1 font-medium text-white truncate">{file.name}</span>
                 {file.status === "uploading" && (
-                  <div className="flex items-center gap-2 text-xs font-mono text-[#8E8E9B]">
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-[#FF6B55]" />
-                    <span>Parsing &amp; Embedding...</span>
+                  <div className="flex items-center gap-1.5 text-[#8E8E98]">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Processing...</span>
                   </div>
                 )}
                 {file.status === "success" && (
-                  <div className="flex items-center gap-1.5 text-[#10B981] text-xs font-mono font-bold">
+                  <div className="flex items-center gap-1.5 text-[#10B981] font-medium">
                     <CheckCircle className="w-4 h-4" />
                     <span>{file.message}</span>
                   </div>
                 )}
                 {file.status === "error" && (
-                  <div className="flex items-center gap-1.5 text-red-400 text-xs font-mono">
+                  <div className="flex items-center gap-1.5 text-red-400">
                     <AlertCircle className="w-4 h-4" />
                     <span>{file.message}</span>
                   </div>
@@ -250,55 +263,64 @@ export default function KnowledgePage() {
         </div>
       )}
 
-      {/* ── Ingested Context List ── */}
-      <div className="mt-10">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-xs font-mono font-bold tracking-widest text-[#FF6B55] uppercase">
-            // INGESTED DOCUMENTS IN CONTEXT ({existingDocs.length})
-          </p>
-          <span className="text-[11px] font-mono text-[#6E6E80]">PGVECTOR STORAGE</span>
+      {/* Documents Table */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-xs font-semibold text-[#8E8E98] uppercase tracking-wider">
+            Connected Documents ({existingDocs.length})
+          </h3>
         </div>
 
         {loadingDocs ? (
-          <div className="py-12 text-center text-xs font-mono text-[#8E8E9B] flex flex-col items-center gap-2">
-            <Loader2 className="w-6 h-6 animate-spin text-[#FF6B55]" />
-            <span>Loading contextual documents...</span>
+          <div className="py-12 text-center text-xs text-[#70707C] flex flex-col items-center gap-2">
+            <Loader2 className="w-5 h-5 animate-spin text-white" />
+            <span>Loading documents...</span>
           </div>
         ) : existingDocs.length === 0 ? (
-          <div className="p-8 rounded-lg border border-[#22222E] bg-[#14141E] text-center text-xs font-mono text-[#8E8E9B]">
-            No documents ingested yet. Upload files above to populate your personal context.
+          <div className="p-8 rounded-xl border border-[#1E1E26] bg-[#121217] text-center text-xs text-[#70707C]">
+            No documents uploaded yet. Drag and drop your files above.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {existingDocs.map((doc) => (
-              <div
-                key={doc.id}
-                className="p-4 rounded-lg border border-[#252535] bg-[#14141E] hover:border-[#2563EB] transition-all flex flex-col justify-between"
-              >
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="w-8 h-8 rounded bg-[#1C1C28] border border-[#2A2A3A] flex items-center justify-center text-[#FF6B55] shrink-0">
-                    <FileText className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-mono font-bold text-[#F8F3E6] truncate">
-                      {doc.filename}
-                    </h4>
-                    <p className="text-[10px] font-mono text-[#6E6E80] mt-0.5">
-                      {doc.mime_type || "text/plain"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-[#20202C] flex items-center justify-between text-[11px] font-mono">
-                  <span className="text-[#8E8E9B]">
-                    {doc.chunk_count || 1} chunks
-                  </span>
-                  <span className="px-2 py-0.5 rounded bg-[#10B981]/15 text-[#10B981] font-bold uppercase tracking-wider text-[10px]">
-                    READY
-                  </span>
-                </div>
-              </div>
-            ))}
+          <div className="rounded-xl border border-[#1E1E26] bg-[#121217] overflow-hidden">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-[#1E1E26] bg-[#0E0E13] text-[#70707C] font-medium">
+                <tr>
+                  <th className="py-3 px-4">Document</th>
+                  <th className="py-3 px-4 hidden sm:table-cell">Size</th>
+                  <th className="py-3 px-4 hidden md:table-cell">Chunks</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 hidden sm:table-cell">Added</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#1E1E26]">
+                {existingDocs.map((doc) => (
+                  <tr key={doc.id} className="hover:bg-[#16161D] transition-colors">
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <FileText className="w-4 h-4 text-[#A0A0AB] shrink-0" />
+                        <span className="font-medium text-white truncate max-w-xs sm:max-w-md">
+                          {doc.filename}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#8E8E98] hidden sm:table-cell">
+                      {formatFileSize(doc.file_size_bytes)}
+                    </td>
+                    <td className="py-3.5 px-4 text-[#8E8E98] hidden md:table-cell">
+                      {doc.chunk_count || 1}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#10B981]/15 text-[#10B981]">
+                        Indexed
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-[#70707C] hidden sm:table-cell">
+                      {formatDate(doc.created_at)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>

@@ -6,12 +6,12 @@ import {
   Send,
   Loader2,
   FileText,
-  Terminal,
   Clock,
   Sparkles,
-  ShieldCheck,
   RotateCcw,
-  CheckCircle2,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
@@ -23,25 +23,11 @@ interface Source {
   relevance_score?: number;
 }
 
-interface ExecutionTrace {
-  intent?: string;
-  selected_tools?: string[];
-  retrieved_candidates?: number;
-  latencies_ms?: {
-    retrieval?: number;
-    rerank?: number;
-    generation?: number;
-    total?: number;
-  };
-  latency_ms?: number;
-}
-
 interface Message {
   role: "user" | "assistant";
   content: string;
   sources?: Source[];
   citations?: string[];
-  trace?: ExecutionTrace;
   timestamp: string;
 }
 
@@ -53,6 +39,7 @@ function ConversationContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [expandedSources, setExpandedSources] = useState<Record<number, boolean>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -67,7 +54,7 @@ function ConversationContent() {
     const q = queryText.trim();
     if (!q || loading) return;
 
-    const userTimestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const userTimestamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     setMessages((prev) => [
       ...prev,
       { role: "user", content: q, timestamp: userTimestamp },
@@ -91,17 +78,16 @@ function ConversationContent() {
       });
 
       const data = await res.json();
-      const assistantTimestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const assistantTimestamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
       if (res.ok) {
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
-            content: data.answer || "No response received.",
+            content: data.answer || "No response available.",
             sources: data.sources || [],
             citations: data.citations || [],
-            trace: data.execution_trace,
             timestamp: assistantTimestamp,
           },
         ]);
@@ -110,7 +96,7 @@ function ConversationContent() {
           ...prev,
           {
             role: "assistant",
-            content: `Error: ${data.detail || "Query execution failed."}`,
+            content: `Error: ${data.detail || "Query failed."}`,
             timestamp: assistantTimestamp,
           },
         ]);
@@ -121,7 +107,7 @@ function ConversationContent() {
         {
           role: "assistant",
           content: `Connection error: ${err.message || "Failed to reach backend."}`,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         },
       ]);
     } finally {
@@ -129,170 +115,147 @@ function ConversationContent() {
     }
   };
 
-  // Run initial query if navigated from home page
+  // Run initial query if passed via URL parameter
   useEffect(() => {
     if (initialQuery && messages.length === 0) {
       executeQuery(initialQuery);
     }
   }, [initialQuery]);
 
-  const promptSuggestions = [
+  const toggleSources = (idx: number) => {
+    setExpandedSources((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
+  const samplePrompts = [
     "What do I need to take care of in the next 30 days?",
     "When does my Dell laptop warranty expire?",
     "When is my auto insurance renewal due?",
-    "What are the details of my flight booking?",
+    "What is the deadline for my college capstone project?",
   ];
 
   return (
-    <div className="flex flex-col h-full bg-[#0C0C10] text-[#F8F3E6] font-sans">
-      {/* ── Top Header ── */}
-      <div className="px-8 py-4 border-b border-[#22222E] bg-[#111118] flex items-center justify-between shrink-0 font-mono">
-        <div className="flex items-center gap-3">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#FF6B55] animate-pulse"></div>
-          <div>
-            <h1 className="text-sm font-bold text-[#F8F3E6] uppercase tracking-wider">
-              CONVERSATION ENGINE // REASONING CONSOLE
-            </h1>
-            <p className="text-[11px] text-[#8E8E9B]">
-              GROUNDED AGENTIC RAG WITH PROMPT INJECTION DEFENSE
-            </p>
-          </div>
+    <div className="flex flex-col h-full bg-[#0A0A0D] text-[#EDEDED]">
+      {/* Top Header */}
+      <div className="px-8 py-4 border-b border-[#1C1C22] bg-[#0E0E12] flex items-center justify-between shrink-0">
+        <div>
+          <h1 className="text-base font-semibold text-white">Chat &amp; Query</h1>
+          <p className="text-xs text-[#7A7A85]">
+            Grounded answers generated from your connected documents.
+          </p>
         </div>
         <button
           onClick={() => setMessages([])}
-          className="text-xs text-[#8E8E9B] hover:text-[#FF6B55] flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#181822] border border-[#2A2A38] transition-colors"
+          className="text-xs text-[#8E8E98] hover:text-white flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#16161D] border border-[#24242E] hover:border-[#383846] transition-colors"
         >
           <RotateCcw className="w-3.5 h-3.5" />
-          Clear Session
+          Clear chat
         </button>
       </div>
 
-      {/* ── Message Stream ── */}
+      {/* Message List */}
       <div className="flex-1 overflow-y-auto px-6 sm:px-12 py-8 space-y-6">
         {messages.length === 0 && (
-          <div className="max-w-3xl mx-auto py-12 text-center">
-            <div className="w-12 h-12 mx-auto mb-4 rounded-lg bg-[#FF6B55]/10 border border-[#FF6B55]/30 flex items-center justify-center text-[#FF6B55]">
-              <Terminal className="w-6 h-6" />
+          <div className="max-w-xl mx-auto py-16 text-center">
+            <div className="w-10 h-10 rounded-full bg-[#181820] border border-[#262632] flex items-center justify-center text-white mx-auto mb-4">
+              <Sparkles className="w-5 h-5" />
             </div>
-            <h2 className="text-2xl font-bold font-display text-[#F8F3E6] mb-2">
-              Ready for Query Execution
+            <h2 className="text-xl font-semibold text-white mb-1">
+              What can I help you find?
             </h2>
-            <p className="text-sm text-[#A0A0B0] max-w-md mx-auto mb-8 font-sans">
-              Ask questions about your connected documents, temporal commitments, and personal memory.
+            <p className="text-xs text-[#7A7A85] mb-8">
+              Ask questions about your uploaded documents, policies, tickets, and deadlines.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
-              {promptSuggestions.map((prompt, idx) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-left">
+              {samplePrompts.map((prompt, idx) => (
                 <button
                   key={idx}
                   onClick={() => executeQuery(prompt)}
-                  className="p-4 rounded-lg bg-[#14141E] border border-[#2E2E40] hover:border-[#FF6B55] hover:bg-[#181826] transition-all text-xs font-mono group"
+                  className="p-3.5 rounded-lg bg-[#121217] border border-[#1E1E26] hover:border-[#3A3A48] hover:bg-[#16161D] transition-all text-xs text-[#A0A0AB] hover:text-white"
                 >
-                  <span className="text-[#FF6B55] mr-2">[{`0${idx + 1}`}]</span>
-                  <span className="text-[#D0D0E0] group-hover:text-white">{prompt}</span>
+                  "{prompt}"
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {messages.map((msg, i) => (
+        {messages.map((msg, idx) => (
           <div
-            key={i}
-            className={`flex flex-col gap-2 max-w-4xl mx-auto ${
+            key={idx}
+            className={`flex flex-col gap-1.5 max-w-3xl mx-auto ${
               msg.role === "user" ? "items-end" : "items-start"
             }`}
           >
-            {/* Role Header */}
-            <div className="flex items-center gap-2 text-[11px] font-mono text-[#6E6E80] px-1">
-              <span className={msg.role === "user" ? "text-[#FF6B55] font-bold" : "text-[#2563EB] font-bold"}>
-                {msg.role === "user" ? "// USER QUERY" : "// NEXUS AGENT"}
-              </span>
-              <span>•</span>
-              <span>{msg.timestamp}</span>
-            </div>
+            <span className="text-[11px] text-[#5E5E6B] px-1 font-medium">
+              {msg.role === "user" ? "You" : "NEXUS"} · {msg.timestamp}
+            </span>
 
             {/* Bubble */}
             <div
-              className={`px-5 py-4 rounded-lg text-sm leading-relaxed ${
+              className={`px-5 py-3.5 rounded-2xl text-sm leading-relaxed ${
                 msg.role === "user"
-                  ? "bg-[#FF6B55] text-[#0C0C10] font-medium shadow-[3px_3px_0px_#FFFFFF]"
-                  : "bg-[#14141E] border border-[#2A2A3A] text-[#F8F3E6] shadow-sm w-full"
+                  ? "bg-[#2563EB] text-white rounded-br-none"
+                  : "bg-[#14141A] border border-[#22222B] text-[#EDEDED] rounded-bl-none w-full shadow-sm"
               }`}
             >
               <div className="whitespace-pre-wrap">{msg.content}</div>
 
-              {/* Execution Trace Metadata for Assistant */}
-              {msg.trace && (
-                <div className="mt-4 pt-3 border-t border-[#222230] flex flex-wrap items-center gap-3 text-[11px] font-mono text-[#8E8E9B]">
-                  {msg.trace.intent && (
-                    <span className="px-2 py-0.5 rounded bg-[#1F1F2E] text-[#FF6B55] border border-[#3A3A4E]">
-                      INTENT: {msg.trace.intent.toUpperCase()}
-                    </span>
-                  )}
-                  {msg.trace.selected_tools && msg.trace.selected_tools.length > 0 && (
-                    <span className="px-2 py-0.5 rounded bg-[#1F1F2E] text-[#60A5FA] border border-[#3A3A4E]">
-                      TOOLS: {msg.trace.selected_tools.join(", ")}
-                    </span>
-                  )}
-                  {msg.trace.latencies_ms && (
-                    <span className="flex items-center gap-1 text-[#10B981]">
-                      <Clock className="w-3 h-3" />
-                      {msg.trace.latencies_ms.total}ms latency
-                    </span>
+              {/* Source citations expandable pill */}
+              {msg.sources && msg.sources.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-[#202028]">
+                  <button
+                    onClick={() => toggleSources(idx)}
+                    className="flex items-center gap-1.5 text-xs text-[#8E8E98] hover:text-white font-medium transition-colors"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-[#3B82F6]" />
+                    <span>{msg.sources.length} source{msg.sources.length > 1 ? "s" : ""} cited</span>
+                    {expandedSources[idx] ? (
+                      <ChevronUp className="w-3 h-3 ml-0.5" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3 ml-0.5" />
+                    )}
+                  </button>
+
+                  {expandedSources[idx] && (
+                    <div className="mt-2.5 space-y-2">
+                      {msg.sources.map((src, sIdx) => (
+                        <div
+                          key={sIdx}
+                          className="p-3 rounded-lg bg-[#0C0C10] border border-[#1E1E26] text-xs"
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="font-medium text-white truncate">
+                              {src.filename}
+                            </span>
+                            {src.relevance_score !== undefined && (
+                              <span className="text-[10px] text-[#10B981] font-mono">
+                                Match
+                              </span>
+                            )}
+                          </div>
+                          {src.excerpt && (
+                            <p className="text-[#8E8E98] text-[11px] line-clamp-2 leading-relaxed">
+                              "{src.excerpt}"
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}
             </div>
-
-            {/* Source Citations Box */}
-            {msg.sources && msg.sources.length > 0 && (
-              <div className="w-full mt-1">
-                <div className="flex items-center gap-2 mb-2 text-xs font-mono text-[#8E8E9B]">
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#10B981]" />
-                  <span>VERIFIED SOURCE CITATIONS ({msg.sources.length})</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {msg.sources.map((src, si) => (
-                    <div
-                      key={si}
-                      className="p-3 rounded-lg border border-[#222230] bg-[#111118] hover:border-[#2563EB] transition-colors"
-                    >
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <FileText className="w-3.5 h-3.5 text-[#FF6B55] shrink-0" />
-                          <span className="text-xs font-mono font-bold text-[#F8F3E6] truncate">
-                            {src.filename}
-                          </span>
-                        </div>
-                        {src.relevance_score !== undefined && (
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#1F1F2E] text-[#10B981]">
-                            {Math.round(src.relevance_score * 100)}% Match
-                          </span>
-                        )}
-                      </div>
-                      {src.excerpt && (
-                        <p className="text-[11px] text-[#A0A0B0] line-clamp-2 leading-relaxed font-sans">
-                          "{src.excerpt}"
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
         ))}
 
         {loading && (
-          <div className="flex flex-col gap-2 max-w-4xl mx-auto items-start">
-            <div className="text-[11px] font-mono text-[#6E6E80] px-1">
-              // NEXUS AGENT • PROCESSING
-            </div>
-            <div className="px-5 py-4 rounded-lg bg-[#14141E] border border-[#2A2A3A] text-sm flex items-center gap-3">
-              <Loader2 className="w-4 h-4 text-[#FF6B55] animate-spin" />
-              <span className="font-mono text-xs text-[#A0A0B0]">
-                Running Hybrid Vector Search &amp; Grounded Reasoner...
+          <div className="flex flex-col gap-1.5 max-w-3xl mx-auto items-start">
+            <span className="text-[11px] text-[#5E5E6B] px-1">NEXUS is thinking...</span>
+            <div className="px-5 py-3.5 rounded-2xl rounded-bl-none bg-[#14141A] border border-[#22222B] text-sm flex items-center gap-2.5">
+              <Loader2 className="w-4 h-4 text-white animate-spin" />
+              <span className="text-xs text-[#8E8E98]">
+                Retrieving relevant excerpts from your documents...
               </span>
             </div>
           </div>
@@ -300,10 +263,10 @@ function ConversationContent() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* ── Input Bar ── */}
-      <div className="px-6 sm:px-12 py-4 border-t border-[#22222E] bg-[#111118] shrink-0">
-        <div className="max-w-4xl mx-auto">
-          <div className="relative flex items-center rounded-lg bg-[#14141E] border border-[#333344] focus-within:border-[#FF6B55] focus-within:shadow-[0_0_12px_rgba(255,107,85,0.25)] transition-all p-1.5">
+      {/* Input Bar */}
+      <div className="px-6 sm:px-12 py-4 border-t border-[#1C1C22] bg-[#0E0E12] shrink-0">
+        <div className="max-w-3xl mx-auto">
+          <div className="relative flex items-center rounded-xl bg-[#14141A] border border-[#24242E] focus-within:border-white focus-within:ring-1 focus-within:ring-white transition-all p-1.5 shadow-sm">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -313,22 +276,18 @@ function ConversationContent() {
                   executeQuery(input);
                 }
               }}
-              placeholder="Ask a question about your documents, deadlines, or personal context..."
+              placeholder="Ask a question about your documents, deadlines, or events..."
               rows={1}
-              className="flex-1 bg-transparent px-3 py-2 text-sm text-[#F8F3E6] placeholder:text-[#6E6E80] focus:outline-none font-mono resize-none"
+              className="flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder:text-[#5E5E6B] focus:outline-none resize-none max-h-32"
             />
             <button
               onClick={() => executeQuery(input)}
               disabled={loading || !input.trim()}
-              className="px-4 py-2.5 rounded bg-[#FF6B55] text-[#0C0C10] font-mono text-xs font-bold uppercase tracking-wider hover:bg-[#FF816D] disabled:opacity-30 transition-all flex items-center gap-1.5 shrink-0 shadow-sm"
+              className="p-2.5 rounded-lg bg-white text-black hover:bg-[#E5E5E5] disabled:opacity-30 transition-all shrink-0"
             >
-              Send
-              <Send className="w-3.5 h-3.5" />
+              <Send className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-[11px] font-mono text-[#6E6E80] mt-2 text-center">
-            All responses are strictly grounded in your verified documents.
-          </p>
         </div>
       </div>
     </div>
@@ -337,7 +296,7 @@ function ConversationContent() {
 
 export default function ConversationPage() {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-xs font-mono text-[#8E8E9B]">Loading reasoning console...</div>}>
+    <Suspense fallback={<div className="p-8 text-center text-xs text-[#7A7A85]">Loading conversation...</div>}>
       <ConversationContent />
     </Suspense>
   );

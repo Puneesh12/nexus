@@ -89,12 +89,46 @@ async def generate_answer(
     Returns:
         dict with keys: answer, sources, citations, model
     """
+    # Build source list for all chunks
+    sources = [
+        {
+            "document_id": str(chunk.document_id),
+            "filename": chunk.filename,
+            "excerpt": chunk.content[:350] + ("…" if len(chunk.content) > 350 else ""),
+            "chunk_index": chunk.chunk_index,
+            "relevance_score": round(chunk.score, 4),
+        }
+        for chunk in chunks
+    ]
+    citations = list(dict.fromkeys(c.filename for c in chunks))
+
     if not settings.OPENAI_API_KEY:
+        if not chunks:
+            return {
+                "answer": "I searched your personal context but could not find any matching documents or facts. You can upload relevant documents in the Knowledge Base to answer this question.",
+                "sources": [],
+                "citations": [],
+                "model": "deterministic-fallback",
+            }
+
+        # Deterministic grounded extraction
+        doc_summaries = []
+        for c in chunks[:3]:
+            # Extract clean lines
+            lines = [line.strip() for line in c.content.split("\n") if line.strip()]
+            summary_lines = "\n".join(f"• {l}" for l in lines[:6])
+            doc_summaries.append(f"**From `{c.filename}`:**\n{summary_lines}")
+
+        answer_text = (
+            f"Based on your connected documents, here is the relevant information:\n\n"
+            + "\n\n".join(doc_summaries)
+        )
+
         return {
-            "answer": "Query generation is not available — OPENAI_API_KEY is not configured.",
-            "sources": [],
-            "citations": [],
-            "model": "none",
+            "answer": answer_text,
+            "sources": sources,
+            "citations": citations,
+            "model": "grounded-extractor",
         }
 
     from openai import AsyncOpenAI

@@ -10,6 +10,7 @@ Design:
 - Metadata filtering applied before merge
 - Reranker applied after merge to final top-K
 """
+import re
 import uuid
 from dataclasses import dataclass
 from typing import Any
@@ -156,13 +157,20 @@ class HybridRetriever:
         db: AsyncSession,
         limit: int,
     ) -> list[RetrievedChunk]:
-        """PostgreSQL full-text search using tsvector."""
-        # Clean query for tsquery — escape special characters
-        clean_query = " & ".join(
-            word for word in query.split() if len(word) > 2
-        )
-        if not clean_query:
-            return []
+        """PostgreSQL full-text search with disjunctive ranking and keyword fallback."""
+        stop_words = {"when", "does", "what", "where", "which", "will", "would", "could", "should", "your", "my", "this", "that", "the", "and", "for", "with", "from", "about", "have", "been"}
+        keywords = [
+            re.sub(r"[^\w]", "", w.lower())
+            for w in query.split()
+            if len(w) >= 3 and w.lower() not in stop_words
+        ]
+        keywords = [k for k in keywords if k]
+
+        if not keywords:
+            keywords = [w.lower() for w in query.split() if w]
+
+        # Build OR tsquery: 'term1' | 'term2' | 'term3'
+        or_tsquery = " | ".join(keywords)
 
         sql = text("""
             SELECT
@@ -174,25 +182,72 @@ class HybridRetriever:
                 d.filename,
                 ts_rank_cd(
                     to_tsvector('english', dc.content),
-                    plainto_tsquery('english', :query)
+                    to_tsquery('english', :tsquery)
                 ) AS score
             FROM document_chunks dc
             JOIN documents d ON d.id = dc.document_id
             WHERE dc.user_id = :user_id
-              AND to_tsvector('english', dc.content) @@ plainto_tsquery('english', :query)
+              AND to_tsvector('english', dc.content) @@ to_tsquery('english', :tsquery)
             ORDER BY score DESC
             LIMIT :limit
         """)
 
-        result = await db.execute(
-            sql,
-            {
-                "query": query,
-                "user_id": str(user_id),
-                "limit": limit,
-            },
-        )
-        rows = result.fetchall()
+        try:
+            result = await db.execute(
+                sql,
+                {
+                    "tsquery": or_tsquery,
+                    "user_id": str(user_id),
+                    "limit": limit,
+                },
+            )
+            rows = result.fetchall()
+        except Exception:
+            rows = []
+
+        # If tsquery found results, return them
+        if rows:
+            return [
+                RetrievedChunk(
+                    chunk_id=row.chunk_id,
+                    document_id=row.document_id,
+                    content=row.content,
+                    score=float(row.score),
+                    filename=row.filename,
+                    chunk_index=row.chunk_index,
+                    metadata=row.metadata or {},
+                    retrieval_method="fulltext",
+                )
+                for row in rows
+            ]
+
+        # Fallback: ILIKE search for keywords
+        ilike_conditions = " OR ".join([f"dc.content ILIKE :kw_{i}" for i in range(len(keywords))])
+        if not ilike_conditions:
+            return []
+
+        params: dict[str, Any] = {"user_id": str(user_id), "limit": limit}
+        for i, kw in enumerate(keywords):
+            params[f"kw_{i}"] = f"%{kw}%"
+
+        fallback_sql = text(f"""
+            SELECT
+                dc.id AS chunk_id,
+                dc.document_id,
+                dc.content,
+                dc.chunk_index,
+                dc.metadata,
+                d.filename,
+                0.5 AS score
+            FROM document_chunks dc
+            JOIN documents d ON d.id = dc.document_id
+            WHERE dc.user_id = :user_id
+              AND ({ilike_conditions})
+            LIMIT :limit
+        """)
+
+        res = await db.execute(fallback_sql, params)
+        fallback_rows = res.fetchall()
 
         return [
             RetrievedChunk(
@@ -205,7 +260,7 @@ class HybridRetriever:
                 metadata=row.metadata or {},
                 retrieval_method="fulltext",
             )
-            for row in rows
+            for row in fallback_rows
         ]
 
     def _rrf_merge(

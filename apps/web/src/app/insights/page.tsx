@@ -2,16 +2,14 @@
 
 import { useEffect, useState } from "react";
 import {
-  Activity,
+  Bell,
   Calendar,
   AlertTriangle,
   FileText,
   ArrowRight,
   Loader2,
   CheckCircle2,
-  Filter,
   Clock,
-  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
@@ -65,60 +63,53 @@ export default function InsightsPage() {
   });
 
   return (
-    <div className="min-h-full bg-[#0C0C10] text-[#F8F3E6] font-sans px-6 sm:px-12 py-10 max-w-5xl mx-auto">
-      {/* ── Top Bar ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 mb-8 border-b border-[#22222E] gap-4">
+    <div className="min-h-full bg-[#0A0A0D] text-[#EDEDED] px-8 py-10 max-w-5xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 mb-8 border-b border-[#1C1C22] gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-mono font-bold tracking-widest text-[#FF6B55] uppercase">
-              // PROACTIVE INTELLIGENCE
-            </span>
-          </div>
-          <h1 className="text-3xl font-extrabold font-display tracking-tight text-[#F8F3E6]">
-            PROACTIVE INSIGHTS
+          <h1 className="text-2xl font-semibold text-white tracking-tight">
+            Insights &amp; Deadlines
           </h1>
-          <p className="text-xs text-[#8E8E9B] mt-1 font-mono">
-            AUTOMATICALLY EXTRACTED COMMITMENTS, DEADLINES, AND EXPIRATIONS
+          <p className="text-sm text-[#8E8E98] mt-0.5">
+            Automated alerts extracted from your warranties, policies, and tickets.
           </p>
         </div>
 
         {/* Filter Chips */}
-        <div className="flex items-center gap-1.5 p-1 rounded-lg bg-[#14141E] border border-[#22222E] self-start sm:self-auto font-mono text-xs">
+        <div className="flex items-center gap-1 p-1 rounded-lg bg-[#14141A] border border-[#22222B] self-start sm:self-auto text-xs">
           {["ALL", "EXPIRATION", "RENEWAL", "SUBMISSION", "TRAVEL"].map((filter) => (
             <button
               key={filter}
               onClick={() => setActiveFilter(filter)}
-              className={`px-3 py-1.5 rounded transition-all ${
+              className={`px-3 py-1.5 rounded-md font-medium transition-all ${
                 activeFilter === filter
-                  ? "bg-[#FF6B55] text-[#0C0C10] font-bold shadow-sm"
-                  : "text-[#8E8E9B] hover:text-white"
+                  ? "bg-white text-black shadow-sm"
+                  : "text-[#8E8E98] hover:text-white"
               }`}
             >
-              {filter}
+              {filter.charAt(0) + filter.slice(1).toLowerCase()}
             </button>
           ))}
         </div>
       </div>
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-24 gap-3">
-          <Loader2 className="w-8 h-8 text-[#FF6B55] animate-spin" />
-          <span className="text-xs font-mono text-[#8E8E9B]">
-            Scanning memory and temporal events...
-          </span>
+        <div className="flex flex-col items-center justify-center py-20 gap-2.5">
+          <Loader2 className="w-6 h-6 text-white animate-spin" />
+          <span className="text-xs text-[#70707C]">Scanning upcoming events...</span>
         </div>
       ) : filteredInsights.length === 0 ? (
-        <div className="p-12 rounded-lg border-2 border-dashed border-[#22222E] bg-[#14141E] text-center max-w-lg mx-auto">
-          <Activity className="w-10 h-10 text-[#FF6B55] mx-auto mb-4" />
-          <h3 className="text-base font-bold font-display text-[#F8F3E6] mb-1">
-            No Active Events in Selected Filter
+        <div className="p-12 rounded-xl border border-[#1E1E26] bg-[#121217] text-center max-w-md mx-auto">
+          <Bell className="w-8 h-8 text-[#70707C] mx-auto mb-3" />
+          <h3 className="text-sm font-medium text-white mb-1">
+            No events found in this category
           </h3>
-          <p className="text-xs text-[#8E8E9B] leading-relaxed mb-6 font-sans">
-            Upload new documents in the Knowledge section to automatically extract warranty expirations, travel schedules, and obligations.
+          <p className="text-xs text-[#70707C]">
+            Upload new documents to extract deadlines and upcoming reminders.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredInsights.map((item) => {
             const isDone = acknowledged[item.id];
             const isHighPriority = item.importance >= 0.85;
@@ -126,78 +117,69 @@ export default function InsightsPage() {
             return (
               <div
                 key={item.id}
-                className={`p-6 rounded-lg border transition-all flex flex-col justify-between ${
-                  isHighPriority
-                    ? "bg-[#14141E] border-[#333344] hover:border-[#FF6B55] shadow-[3px_3px_0px_rgba(255,107,85,0.2)]"
-                    : "bg-[#14141E] border-[#252535] hover:border-[#2563EB]"
-                }`}
+                className="p-5 rounded-xl border border-[#1E1E26] bg-[#121217] hover:border-[#2C2C38] transition-all flex flex-col justify-between"
               >
                 <div>
-                  {/* Card Header */}
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-2 font-mono">
-                      <span
-                        className={`text-[10px] px-2.5 py-0.5 rounded font-bold uppercase tracking-wider ${
-                          isHighPriority
-                            ? "bg-[#FF6B55] text-[#0C0C10]"
-                            : "bg-[#2563EB] text-white"
-                        }`}
-                      >
-                        {item.type}
-                      </span>
-                      <span className="text-xs text-[#8E8E9B] flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {item.date}
-                      </span>
-                    </div>
+                  {/* Top Meta */}
+                  <div className="flex items-center justify-between gap-3 mb-3 text-xs">
+                    <span
+                      className={`px-2 py-0.5 rounded text-[11px] font-medium ${
+                        isHighPriority
+                          ? "bg-red-500/15 text-red-400"
+                          : "bg-blue-500/15 text-blue-400"
+                      }`}
+                    >
+                      {item.type.toUpperCase()}
+                    </span>
 
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#1F1F2E] text-[#10B981] font-bold">
-                      {Math.round(item.importance * 100)}% PRIORITY
+                    <span className="text-xs text-[#8E8E98] flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      {item.date}
                     </span>
                   </div>
 
                   {/* Title & Description */}
-                  <h3 className="text-base font-bold font-display text-[#F8F3E6] mb-2 leading-snug">
+                  <h3 className="text-sm font-semibold text-white mb-1.5 leading-snug">
                     {item.title}
                   </h3>
-                  <p className="text-xs text-[#A0A0B0] leading-relaxed mb-4">
+                  <p className="text-xs text-[#8E8E98] leading-relaxed mb-4">
                     {item.description}
                   </p>
 
-                  {/* Source Document Tag */}
+                  {/* Source Document */}
                   {item.source_filename && (
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#09090C] border border-[#22222E] text-[11px] font-mono text-[#8E8E9B] mb-4">
-                      <FileText className="w-3 h-3 text-[#FF6B55]" />
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#0C0C10] border border-[#1E1E26] text-[11px] text-[#70707C] mb-4">
+                      <FileText className="w-3 h-3 text-[#A0A0AB]" />
                       <span className="truncate max-w-[220px]">{item.source_filename}</span>
                     </div>
                   )}
                 </div>
 
-                {/* Recommended Action Footer */}
+                {/* Action Footer */}
                 {item.recommended_action && (
-                  <div className="pt-3 border-t border-[#22222E] flex items-center justify-between gap-3">
-                    <div className="text-[11px] text-[#A0A0B0] font-sans truncate">
-                      <span className="font-mono text-[#6E6E80] mr-1">ACTION:</span>
-                      <strong className="text-[#F8F3E6] font-medium">{item.recommended_action}</strong>
+                  <div className="pt-3 border-t border-[#1C1C22] flex items-center justify-between gap-2">
+                    <div className="text-xs text-[#8E8E98] truncate">
+                      <span className="text-[#5E5E6B] mr-1">Action:</span>
+                      <span className="text-[#EDEDED]">{item.recommended_action}</span>
                     </div>
                     <button
                       onClick={() => handleAction(item.id)}
                       disabled={isDone}
-                      className={`text-xs font-mono px-3 py-1.5 rounded flex items-center gap-1.5 transition-all shrink-0 ${
+                      className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all shrink-0 font-medium ${
                         isDone
-                          ? "bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/30 font-bold"
-                          : "bg-[#FF6B55] text-[#0C0C10] hover:bg-[#FF816D] font-bold shadow-[2px_2px_0px_#FFFFFF]"
+                          ? "bg-[#10B981]/15 text-[#10B981]"
+                          : "bg-white text-black hover:bg-[#E5E5E5]"
                       }`}
                     >
                       {isDone ? (
                         <>
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          Handled
+                          Done
                         </>
                       ) : (
                         <>
                           Action
-                          <ArrowRight className="w-3 h-3" />
+                          <ArrowRight className="w-3.5 h-3.5" />
                         </>
                       )}
                     </button>
